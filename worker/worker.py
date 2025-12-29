@@ -6,7 +6,7 @@ from multiprocessing.pool import ThreadPool
 
 from sqlalchemy.orm import Session
 
-from backend.db import SessionLocal, Job, Segment
+from backend.db import SessionLocal, Job, Segment, init_db
 from backend.config import WORKER_POLL_INTERVAL, WORKER_PARALLEL_JOBS, LOG_DIR
 from models.pipeline import run_pipeline
 
@@ -87,5 +87,6 @@ def requeue_running():
 
 
 if __name__ == "__main__":
+    init_db()
     requeue_running()
     poll_loop()
