@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>جزئیات کار</title>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600&display=swap" rel="stylesheet">
+  <style>body{font-family:'Vazirmatn',sans-serif;}</style>
+</head>
+<body class="bg-gray-50">
+<div class="max-w-5xl mx-auto py-8 px-4" x-data="jobDetail('{{ job_id }}')" x-init="fetchData()">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-2xl font-semibold">جزئیات کار</h1>
+      <p class="text-sm text-gray-600" x-text="`کد: ${jobId}`"></p>
+    </div>
+    <a href="/" class="text-blue-600 text-sm">بازگشت</a>
+  </div>
+  <div class="bg-white rounded shadow p-4 mb-4 flex items-center justify-between">
+    <div>
+      <div class="text-sm text-gray-600">وضعیت</div>
+      <div class="font-semibold" x-text="detail.status"></div>
+    </div>
+    <div class="w-48 bg-gray-200 h-2 rounded">
+      <div class="bg-green-500 h-2 rounded" :style="`width:${detail.progress}%`"></div>
+    </div>
+    <div class="space-x-2 space-x-reverse">
+      <template x-for="art in detail.artifacts" :key="art">
+        <a :href="`/api/jobs/${jobId}/download`" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">دانلود</a>
+      </template>
+    </div>
+  </div>
+  <div class="grid grid-cols-3 gap-4 mb-4">
+    <div class="bg-white rounded shadow p-4">
+      <h2 class="font-semibold mb-2">تحلیل مکالمه</h2>
+      <template x-if="detail.analytics.talk_time.length">
+        <div>
+          <template x-for="item in detail.analytics.talk_time" :key="item.speaker">
+            <div class="flex items-center justify-between text-sm border-b py-1">
+              <span x-text="item.speaker"></span>
+              <span x-text="item.seconds.toFixed(1)+' ثانیه'"></span>
+            </div>
+          </template>
+        </div>
+      </template>
+      <div x-show="!detail.analytics.talk_time.length" class="text-sm text-gray-500">در انتظار نتایج...</div>
+    </div>
+    <div class="bg-white rounded shadow p-4">
+      <h2 class="font-semibold mb-2">قطع کردن حرف</h2>
+      <template x-for="it in detail.analytics.interruptions" :key="it.timestamp">
+        <div class="text-sm border-b py-1" x-text="`زمان ${it.timestamp}s - ${it.actor} -> ${it.target}`"></div>
+      </template>
+      <div x-show="!detail.analytics.interruptions.length" class="text-sm text-gray-500">موردی نیست</div>
+    </div>
+    <div class="bg-white rounded shadow p-4">
+      <h2 class="font-semibold mb-2">خلاصه</h2>
+      <ul class="list-disc list-inside text-sm space-y-1">
+        <template x-for="b in detail.summary.bullets" :key="b">
+          <li x-text="b"></li>
+        </template>
+      </ul>
+      <div x-show="!detail.summary.bullets.length" class="text-sm text-gray-500">در انتظار...</div>
+    </div>
+  </div>
+  <div class="bg-white rounded shadow p-4">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="font-semibold">قطعات گفتگو</h2>
+      <div class="space-x-2 space-x-reverse text-sm">
+        <label>فیلتر حس:</label>
+        <select x-model="emotionFilter" class="border rounded px-2 py-1 text-sm">
+          <option value="">همه</option>
+          <option>شاد</option>
+          <option>عصبانی</option>
+          <option>غمگین</option>
+          <option>هیجان‌زده</option>
+          <option>خنثی</option>
+        </select>
+      </div>
+    </div>
+    <div class="divide-y">
+      <template x-for="seg in filteredSegments" :key="seg.start_ms">
+        <div class="py-2">
+          <div class="flex items-center justify-between text-sm">
+            <div>
+              <span class="font-semibold" x-text="seg.speaker"></span>
+              <span class="text-gray-500" x-text="`(${(seg.start_ms/1000).toFixed(1)} - ${(seg.end_ms/1000).toFixed(1)}s)`"></span>
+            </div>
+            <span class="text-xs bg-gray-200 px-2 py-1 rounded" x-text="seg.emotion"></span>
+          </div>
+          <div class="mt-1" x-text="seg.text"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+<script>
+function jobDetail(jobId){
+  return {
+    jobId, detail:{analytics:{talk_time:[],interruptions:[],turn_stats:{},interaction_graph:[]},summary:{bullets:[],highlights:[]},segments:[],artifacts:[],status:'queued',progress:0}, emotionFilter:'',
+    async fetchData(){
+      const res=await fetch(`/api/jobs/${jobId}`);
+      if(res.ok){this.detail=await res.json();}
+      setTimeout(()=>this.fetchData(),1500);
+    },
+    get filteredSegments(){
+      if(!this.emotionFilter) return this.detail.segments;
+      return this.detail.segments.filter(s=>s.emotion===this.emotionFilter);
+    }
+  }
+}
+</script>
+</body>
+</html>
